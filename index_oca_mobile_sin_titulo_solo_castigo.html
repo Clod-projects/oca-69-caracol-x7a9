@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Juego de la Oca 0–69 | Caracol + 69 centrado (Robusto + Nombres)</title>
+  <style>
+    :root{
+      --ink:#111;
+      --muted:#4a4a4a;
+      --line:#101010;
+      --accent:#5b3bff;
+      --bg:#ffe2c6;
+      --paper:#fff2e6;
+      --cell:#fff7f0;
+      --border: 1.5px;
+      --padPage: 8px;
+      --padCell: 6px;
+      --num: 16px;
+      --emo: 16px;
+      --tok: 14px;
+    }
+    *{box-sizing:border-box}
+    html, body{height:100%;background:var(--bg)!important}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--ink);
+      overflow:hidden;
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      padding:10px 14px;
+      background: rgba(255,242,230,.92);
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid rgba(0,0,0,.10);
+    }
+    header h1{margin:0;font-size:15px}
+    header .sub{margin-top:4px; font-size:12px; color:rgba(0,0,0,.65)}
+    main{
+      height: 100vh;
+      max-width: 1180px;
+      margin:0 auto;
+      padding:10px 12px 12px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      overflow:hidden;
+    }
+    .card{
+      height: 100%;
+      background: rgba(255,242,230,.70);
+      border:1px solid rgba(0,0,0,.10);
+      border-radius:18px;
+      padding:10px;
+      box-shadow:0 10px 26px rgba(0,0,0,.10);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+    .badge{
+      display:flex; gap:10px; align-items:center;
+      background:rgba(0,0,0,.04);
+      border:1px solid rgba(0,0,0,.10);
+      padding:10px 12px;
+      border-radius:16px;
+      flex: 0 0 auto;
+    }
+    .playerNameLabel{
+      font-weight: 1000;
+      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,.18);
+      background: rgba(255,255,255,.55);
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .eventTop{
+      flex: 1 1 420px;
+      min-width: 260px;
+      background: rgba(0,0,0,.04);
+      border: 1px solid rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+      line-height: 1.25;
+      font-size: 13px;
+      max-height: 64px;
+      overflow: auto;
+    }
+    .win{color:#0f8a4b; font-weight:1000}
+    .dice{
+      position:relative;
+      width:42px;height:42px;border-radius:12px;
+      background:#ffffff;
+      border:2px solid rgba(0,0,0,.28);
+      box-shadow:0 10px 22px rgba(0,0,0,.12);
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap:2px;
+      padding:7px;
+      user-select:none;
+    }
+    .dice .value{
+      position:absolute; inset:0;
+      display:grid; place-items:center;
+      font-weight:1000; font-size:14px; color:#111;
+      pointer-events:none;
+    }
+    .pip{width:7px;height:7px;display:none;align-self:center;justify-self:center;border-radius:999px;background:#111}
+    .p1{grid-area:1/1;} .p2{grid-area:1/2;} .p3{grid-area:1/3;}
+    .p4{grid-area:2/1;} .p5{grid-area:2/2;} .p6{grid-area:2/3;}
+    .p7{grid-area:3/1;} .p8{grid-area:3/2;} .p9{grid-area:3/3;}
+    .dice[data-face="1"] .p5{display:block;}
+    .dice[data-face="2"] .p1,.dice[data-face="2"] .p9{display:block;}
+    .dice[data-face="3"] .p1,.dice[data-face="3"] .p5,.dice[data-face="3"] .p9{display:block;}
+    .dice[data-face="4"] .p1,.dice[data-face="4"] .p3,.dice[data-face="4"] .p7,.dice[data-face="4"] .p9{display:block;}
+    .dice[data-face="5"] .p1,.dice[data-face="5"] .p3,.dice[data-face="5"] .p5,.dice[data-face="5"] .p7,.dice[data-face="5"] .p9{display:block;}
+    .dice[data-face="6"] .p1,.dice[data-face="6"] .p3,.dice[data-face="6"] .p4,.dice[data-face="6"] .p6,.dice[data-face="6"] .p7,.dice[data-face="6"] .p9{display:block;}
+    @keyframes diceRoll{
+      0%{transform:rotate(0deg) scale(1);}
+      25%{transform:rotate(100deg) scale(1.05);}
+      50%{transform:rotate(200deg) scale(1);}
+      75%{transform:rotate(300deg) scale(1.05);}
+      100%{transform:rotate(360deg) scale(1);}
+    }
+    .dice.rolling{ animation:diceRoll 520ms ease-in-out infinite; }
+    button{
+      border:0; cursor:pointer;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      background:linear-gradient(180deg,#6b54ff,#4b2fff);
+      color:white;
+      box-shadow:0 10px 20px rgba(91,59,255,.18);
+      white-space:nowrap;
+    }
+    button.ghost{
+      background:transparent;
+      border:1px solid rgba(0,0,0,.18);
+      color:#111;
+      box-shadow:none;
+    }
+    button:disabled{opacity:.55; cursor:not-allowed}
+
+    /* ===== Top bar: siempre en UNA sola fila ===== */
+    .topbar{
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
+      gap:10px;
+    }
+    .topbar > .row{
+      justify-content:flex-end !important;
+      flex-wrap: nowrap !important;
+    }
+    /* Evita que el texto del evento empuje a una segunda línea */
+    .eventTop{
+      max-height: 74px;           /* mantiene altura fija */
+      overflow: hidden;           /* sin scroll en la barra */
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;      /* máximo 2 renglones */
+    }
+    @media (max-width: 520px){
+      /* En pantallas muy pequeñas, permite que los controles hagan scroll horizontal en vez de bajar de línea */
+      .topbar > .row{
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+      .topbar > .row::-webkit-scrollbar{height:6px}
+    }
+
+    .pageLetter{
+      width: min(1100px, calc(100vw - 24px));
+      height: min(
+        calc((min(1100px, calc(100vw - 24px))) * 8.5 / 11),
+        calc(100vh - 210px)
+      );
+      aspect-ratio: 11 / 8.5;
+      background: var(--paper);
+      border: 1px solid rgba(0,0,0,.20);
+      border-radius: 10px;
+      box-shadow:0 14px 28px rgba(0,0,0,.16);
+      padding: var(--padPage);
+      margin: 0 auto;
+      display:grid;
+      place-items:stretch;
+      overflow:hidden;
+      flex: 1 1 auto;
+    }
+    .board{
+      width:100%; height:100%;
+      border: calc(var(--border) + 0.5px) solid var(--line);
+      display:grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      background: rgba(255,255,255,.35);
+      overflow:hidden;
+    }
+    .cell{
+      border: var(--border) solid var(--line);
+      padding: var(--padCell);
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      background: var(--cell);
+    }
+    .cell.big{
+      align-items:center; justify-content:center; text-align:center;
+      background:#ffe9d3;
+    }
+    .cell.big .num{ font-size:32px; }
+    .cell.big .tag{ font-size:12px; }
+    .topLine{display:flex; align-items:flex-start; justify-content:space-between; gap:8px}
+    .num{font-weight:1000; font-size: var(--num); letter-spacing:.2px}
+    .tag{font-size:11px; color:var(--muted)}
+    .emoji{font-size: var(--emo); line-height:1; opacity:.95; display:block}
+    .tokens{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px}
+    .tokLabel{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,.35);
+      background: rgba(255,255,255,.55);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.15;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .highlight{
+      outline: 3px solid var(--accent);
+      outline-offset: -3px;
+      box-shadow: inset 0 0 0 2px rgba(91,59,255,.18);
+    }
+    /* Modal */
+    .modalBack{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.35);
+      display:none; place-items:center; z-index:50;
+    }
+    .modal{
+      width:min(92vw, 520px);
+      background:#fff;
+      border:1px solid rgba(0,0,0,.14);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 16px 42px rgba(0,0,0,.25);
+    }
+    .modal h2{margin:0 0 6px 0; font-size:16px}
+    .small{font-size:12px; color:rgba(0,0,0,.65)}
+    .grid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:8px;
+    }
+    @media(max-width:420px){ .grid{grid-template-columns: repeat(3,1fr);} }
+    .grid button{padding:12px 0}
+    input{
+      font: 14px system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    }
+  </style>
+</head>
+<body>
+<div id="errorOverlay" style="display:none;
+position:fixed;inset:12px 12px auto 12px;z-index:9999;
+background:#fff3cd;border:1px solid #ffeeba;border-radius:12px;padding:10px 12px;
+font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shadow:0 10px 26px rgba(0,0,0,.18)"></div>
+
+<div class="modalBack" id="modalBack">
+  <div class="modal">
+    <h2>Configura jugadores</h2>
+    <div class="small">1) Elige cuántos juegan (2 a 8). 2) Escribe sus nombres. 3) Iniciar.</div>
+    <div class="grid" id="playerGrid"></div>
+
+    <div style="margin-top:10px" class="small">Nombres de jugadores:</div>
+    <div id="nameInputs" style="margin-top:8px;display:grid;gap:8px"></div>
+
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="ghost" id="fillDefaults">Autollenar</button>
+      <button id="startGame">Iniciar</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="card">
+    <div class="row topbar">
+      <div class="badge">
+        <div style="font-weight:1000" id="turnName">Turno:</div>
+        <div id="turnLabel" class="playerNameLabel">Jugador 1</div>
+        <div class="small" id="turnPos">Posición: 0 (SALIDA)</div>
+      </div>
+
+      <div class="eventTop" id="eventBox">
+        Listo. Empiezan en <strong>SALIDA (0)</strong>. Toca “Tirar dados”.
+      </div>
+
+      <div class="row" style="justify-content:flex-end">
+        <div class="dice" id="d1" data-face="1" aria-label="Dado 1">
+          <span class="value" id="d1v">1</span>
+          <div class="pip p1"></div><div class="pip p2"></div><div class="pip p3"></div>
+          <div class="pip p4"></div><div class="pip p5"></div><div class="pip p6"></div>
+          <div class="pip p7"></div><div class="pip p8"></div><div class="pip p9"></div>
+        </div>
+        <div class="dice" id="d2" data-face="1" aria-label="Dado 2">
+          <span class="value" id="d2v">1</span>
+          <div class="pip p1"></div><div class="pip p2"></div><div class="pip p3"></div>
+          <div class="pip p4"></div><div class="pip p5"></div><div class="pip p6"></div>
+          <div class="pip p7"></div><div class="pip p8"></div><div class="pip p9"></div>
+        </div>
+        <button id="rollBtn">Tirar dados</button>
+        <button class="ghost" id="changePlayers">Cambiar jugadores</button>
+        <button class="ghost" id="resetBtn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="pageLetter">
+      <div class="board" id="board"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const LAST = 69;
+
+  // ============================================================
+  // ✅ AQUÍ ES DONDE TÚ ESCRIBES LOS CASTIGOS (casillas 1..69)
+  // - SALIDA (0) no lleva castigo.
+  // - PUNISHMENTS[0]  -> casilla 1
+  // - PUNISHMENTS[68] -> casilla 69
+  // ============================================================
+  const PUNISHMENTS = [
+  //  1:
+  "Castigo 1: Castiga a quien quieras",
+  //  2:
+  "Castigo 2: Descubre tus genitales y juega así dos turnos",
+  //  3:
+  "Castigo 3: Bésale la espalda",
+  //  4:
+  "Castigo 4: iñas besan a todos, niños a niñas.",
+  //  5:
+  "Castigo 5:niñas besan a todos, niños a niñas. ",
+  //  6:
+  "Castigo 6: __________",
+  //  7:
+  "Castigo 7: __________",
+  //  8:
+  "Castigo 8: __________",
+  //  9:
+  "Castigo 9: __________",
+  // 10:
+  "Castigo 10: __________",
+  // 11:
+  "Castigo 11: __________",
+  // 12:
+  "Castigo 12: __________",
+  // 13:
+  "Castigo 13: __________",
+  // 14:
+  "Castigo 14: __________",
+  // 15:
+  "Castigo 15: __________",
+  // 16:
+  "Castigo 16: __________",
+  // 17:
+  "Castigo 17: __________",
+  // 18:
+  "Castigo 18: __________",
+  // 19:
+  "Castigo 19: __________",
+  // 20:
+  "Castigo 20: __________",
+  // 21:
+  "Castigo 21: __________",
+  // 22:
+  "Castigo 22: __________",
+  // 23:
+  "Castigo 23: __________",
+  // 24:
+  "Castigo 24: __________",
+  // 25:
+  "Castigo 25: __________",
+  // 26:
+  "Castigo 26: __________",
+  // 27:
+  "Castigo 27: __________",
+  // 28:
+  "Castigo 28: __________",
+  // 29:
+  "Castigo 29: __________",
+  // 30:
+  "Castigo 30: __________",
+  // 31:
+  "Castigo 31: __________",
+  // 32:
+  "Castigo 32: __________",
+  // 33:
+  "Castigo 33: __________",
+  // 34:
+  "Castigo 34: __________",
+  // 35:
+  "Castigo 35: __________",
+  // 36:
+  "Castigo 36: __________",
+  // 37:
+  "Castigo 37: __________",
+  // 38:
+  "Castigo 38: __________",
+  // 39:
+  "Castigo 39: __________",
+  // 40:
+  "Castigo 40: __________",
+  // 41:
+  "Castigo 41: __________",
+  // 42:
+  "Castigo 42: __________",
+  // 43:
+  "Castigo 43: __________",
+  // 44:
+  "Castigo 44: __________",
+  // 45:
+  "Castigo 45: __________",
+  // 46:
+  "Castigo 46: __________",
+  // 47:
+  "Castigo 47: __________",
+  // 48:
+  "Castigo 48: __________",
+  // 49:
+  "Castigo 49: __________",
+  // 50:
+  "Castigo 50: __________",
+  // 51:
+  "Castigo 51: __________",
+  // 52:
+  "Castigo 52: __________",
+  // 53:
+  "Castigo 53: __________",
+  // 54:
+  "Castigo 54: __________",
+  // 55:
+  "Castigo 55: __________",
+  // 56:
+  "Castigo 56: __________",
+  // 57:
+  "Castigo 57: __________",
+  // 58:
+  "Castigo 58: __________",
+  // 59:
+  "Castigo 59: __________",
+  // 60:
+  "Castigo 60: __________",
+  // 61:
+  "Castigo 61: __________",
+  // 62:
+  "Castigo 62: __________",
+  // 63:
+  "Castigo 63: __________",
+  // 64:
+  "Castigo 64: __________",
+  // 65:
+  "Castigo 65: __________",
+  // 66:
+  "Castigo 66: __________",
+  // 67:
+  "Castigo 67: __________",
+  // 68:
+  "Castigo 68: __________",
+  // 69:
+  "Castigo 69: __________",
+];
+  // ✍️ EJEMPLO:
+  // PUNISHMENTS[0] = "Toma agua. Pierdes 1 turno.";
+  // PUNISHMENTS[5] = "Canta una canción. Retrocede 2 casillas.";
+
+  const EMOJIS = [
+    "🚩","🎲","🧭","🔥","💧","🌪️","🌈","⭐","🧠","💥",
+    "🍀","🍕","🎸","🎭","🚀","👑","🧲","🦴","🧪",
+    "🧊","🌶️","🍉","🥶","😈","😇","🕵️","🧟","🧙",
+    "🧞","🦄","🐉","🐢","🦊","🐺","🐙","🦈","🐝",
+    "🌵","🍄","🌋","🏝️","🏰","🗿","⚡","💎","🔮",
+    "🧨","🎯","🪄","🎮","🎧","📣","📌","🔔","🧩",
+    "🧱","🪙","🧷","🧰","🧯","🧼","🧸","🪁","🪐",
+    "🏁","🧿","🌀","🗝️","🧭"
+  ];
+  const emojiFor = (pos) => EMOJIS[pos] || "";
+
+  const PLAYER_COLORS = [
+    {name:"Jugador 1", color:"#ff3b3b"},
+    {name:"Jugador 2", color:"#3b82ff"},
+    {name:"Jugador 3", color:"#3bff9b"},
+    {name:"Jugador 4", color:"#ffb03b"},
+    {name:"Jugador 5", color:"#b13bff"},
+    {name:"Jugador 6", color:"#8b5a2b"},
+    {name:"Jugador 7", color:"#00d4ff"},
+    {name:"Jugador 8", color:"#ff5ad4"},
+  ];
+
+  // Nombres configurables (se capturan en el modal)
+  let playerNames = PLAYER_COLORS.map(p => p.name);
+
+  // ===== TABLERO 9x8, caracol desde abajo-izquierda + 69 centrado =====
+  const ROWS = 8, COLS = 9;
+  const BIG = { pos: 69, row: 4, col: 4, colSpan: 3, rowSpan: 1 };
+
+  function buildSpiralCoordsBottomLeft(){
+    const reserved = new Set();
+    for(let dc=0; dc<BIG.colSpan; dc++) reserved.add(`${BIG.row}-${BIG.col+dc}`);
+
+    const coords = [];
+    let top=1, left=1, bottom=ROWS, right=COLS;
+
+    while(top<=bottom && left<=right){
+      for(let c=left; c<=right; c++){
+        const key = `${bottom}-${c}`;
+        if(!reserved.has(key)) coords.push({row:bottom, col:c});
+      }
+      bottom--;
+      if(top>bottom || left>right) break;
+
+      for(let r=bottom; r>=top; r--){
+        const key = `${r}-${right}`;
+        if(!reserved.has(key)) coords.push({row:r, col:right});
+      }
+      right--;
+      if(top>bottom || left>right) break;
+
+      for(let c=right; c>=left; c--){
+        const key = `${top}-${c}`;
+        if(!reserved.has(key)) coords.push({row:top, col:c});
+      }
+      top++;
+      if(top>bottom || left>right) break;
+
+      for(let r=top; r<=bottom; r++){
+        const key = `${r}-${left}`;
+        if(!reserved.has(key)) coords.push({row:r, col:left});
+      }
+      left++;
+    }
+    return coords;
+  }
+
+  function buildPlacementsSafe(){
+    if(BIG.row < 1 || BIG.row > ROWS || BIG.col < 1 || BIG.col > COLS) throw new Error("BIG fuera del tablero.");
+    if(BIG.col + BIG.colSpan - 1 > COLS) throw new Error("BIG se sale por columnas.");
+
+    const coords = buildSpiralCoordsBottomLeft();
+    if(coords.length < 69) throw new Error("Coordenadas insuficientes (coords.length=" + coords.length + ")");
+
+    const placements = [];
+    for(let n=0;n<=68;n++){
+      const xy = coords[n];
+      if(!xy) throw new Error("xy undefined en n=" + n);
+      placements.push({pos:n,row:xy.row,col:xy.col,colSpan:1,rowSpan:1});
+    }
+    placements.push(BIG);
+    return placements;
+  }
+
+  let PLACEMENTS = [];
+  try{
+    PLACEMENTS = buildPlacementsSafe();
+  }catch(e){
+    console.error("Placements error:", e);
+    const coords = [];
+    for(let r=ROWS; r>=1; r--){
+      const cols = ((ROWS-r)%2===0) ? [...Array(COLS).keys()].map(i=>i+1) : [...Array(COLS).keys()].map(i=>COLS-i);
+      for(const c of cols) coords.push({row:r, col:c});
+    }
+    PLACEMENTS = [];
+    for(let n=0;n<=69;n++){
+      const xy = coords[n];
+      PLACEMENTS.push({pos:n,row:xy.row,col:xy.col,colSpan:1,rowSpan:1});
+    }
+  }
+
+  // --- State ---
+  let playerCount = 2;
+  let players = [];
+  let turn = 0;
+  let canRoll = true;
+
+  // --- DOM ---
+  const boardEl = document.getElementById("board");
+  const d1El = document.getElementById("d1");
+  const d2El = document.getElementById("d2");
+  const d1v = document.getElementById("d1v");
+  const d2v = document.getElementById("d2v");
+  const rollBtn = document.getElementById("rollBtn");
+  const eventBox = document.getElementById("eventBox");
+  const turnName = document.getElementById("turnName");
+  const turnPos = document.getElementById("turnPos");
+  const turnLabel = document.getElementById("turnLabel");
+  const resetBtn = document.getElementById("resetBtn");
+  const modalBack = document.getElementById("modalBack");
+  const playerGrid = document.getElementById("playerGrid");
+  const changePlayersBtn = document.getElementById("changePlayers");
+  const errorOverlay = document.getElementById("errorOverlay");
+
+  const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+
+  function escapeHtml(s){
+    return (s??"").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
+  function setEvent(html, good=false){
+    eventBox.innerHTML = good ? `<span class="win">${html}</span>` : html;
+  }
+  function showError(msg){
+    if(errorOverlay){
+      errorOverlay.style.display = "block";
+      errorOverlay.textContent = "ERROR: " + msg;
+    }
+    if(eventBox){
+      eventBox.innerHTML = "<span style='color:#b00020;font-weight:900'>ERROR:</span> " + escapeHtml(msg);
+    }
+  }
+  window.addEventListener("error", (ev) => showError(ev?.message || "Error desconocido"));
+  window.addEventListener("unhandledrejection", (ev) => showError(ev?.reason?.message || String(ev?.reason || "Promesa rechazada")));
+
+  function getActivePlayer(){ return players[turn]; }
+  function getPunishment(pos){ return pos===0 ? "" : (PUNISHMENTS[pos-1] ?? "(sin castigo)"); }
+
+  function initPlayers(){
+    players = [];
+    for(let i=0;i<playerCount;i++){
+      const nm = (playerNames[i] || PLAYER_COLORS[i].name);
+      players.push({ id:i, name:nm, color:PLAYER_COLORS[i].color, pos:0, won:false });
+    }
+    turn = 0;
+    canRoll = true;
+    d1El.dataset.face = "1"; d2El.dataset.face = "1";
+    d1v.textContent = "1"; d2v.textContent = "1";
+    rollBtn.disabled = false;
+  }
+
+  function updateHeader(){
+    const p = getActivePlayer();
+    turnName.textContent = "Turno:";
+    if(turnLabel){
+      turnLabel.textContent = p.name;
+      turnLabel.style.color = p.color;
+    }
+    turnPos.textContent = (p.pos === 0) ? `Posición: 0 (SALIDA)` : `Posición: ${p.pos}${p.won ? " (GANÓ)" : ""}`;
+  }
+
+  function shortName(name){
+    const s = (name||"").trim();
+    if(!s) return "";
+    const parts = s.split(/\s+/).filter(Boolean);
+    if(parts.length === 1) return parts[0].slice(0,6);
+    return parts.map(p=>p[0]).join("").slice(0,6);
+  }
+
+  function renderBoard(){
+    boardEl.innerHTML = "";
+    const ordered = [...PLACEMENTS].sort((a,b)=> (a.row-b.row) || (a.col-b.col));
+
+    ordered.forEach(p => {
+      const pos = p.pos;
+      const cell = document.createElement("div");
+      cell.className = "cell" + (pos === 69 ? " big" : "");
+      cell.style.gridRow = `${p.row} / span ${p.rowSpan}`;
+      cell.style.gridColumn = `${p.col} / span ${p.colSpan}`;
+      cell.dataset.pos = String(pos);
+
+      const title = (pos === 0) ? "SALIDA" : String(pos);
+      const tag = (pos === 0) ? "inicio" : (pos === 69 ? "META" : "");
+      const emo = emojiFor(pos);
+
+      cell.innerHTML = `
+        <div class="topLine">
+          <div>
+            <div class="num">${escapeHtml(title)}</div>
+            <div class="tag">${escapeHtml(tag)}</div>
+          </div>
+          <div class="emoji" aria-label="emoji">${escapeHtml(emo)}</div>
+        </div>
+        <div class="tokens" id="tok-${pos}"></div>
+      `;
+
+      cell.addEventListener("click", () => {
+        if(pos === 0){
+          setEvent(`<strong>SALIDA (0)</strong><br>Sin castigo.`);
+        }else{
+          setEvent(`<strong>Casilla ${pos}</strong><br><strong>Castigo:</strong> ${escapeHtml(getPunishment(pos))}`);
+        }
+      });
+
+      boardEl.appendChild(cell);
+    });
+
+    paintTokens();
+    highlightActiveCell();
+  }
+
+  function paintTokens(){
+    for(let p=0;p<=69;p++){
+      const t = document.getElementById(`tok-${p}`);
+      if(t) t.innerHTML = "";
+    }
+    players.forEach(pl=>{
+      const t = document.getElementById(`tok-${pl.pos}`);
+      if(!t) return;
+      const lab = document.createElement("div");
+      lab.className = "tokLabel";
+      lab.style.color = pl.color;
+      lab.textContent = shortName(pl.name) || "•";
+      t.appendChild(lab);
+    });
+  }
+
+  function highlightActiveCell(){
+    [...boardEl.children].forEach(ch => ch.classList.remove("highlight"));
+    const p = getActivePlayer();
+    const cell = [...boardEl.children].find(x => x.dataset && Number(x.dataset.pos) === p.pos);
+    if(cell) cell.classList.add("highlight");
+  }
+
+  function movePlayer(pl, steps){
+    if(pl.won) return { landed: pl.pos, bounced:false, won:false };
+    let newPos = pl.pos + steps;
+
+    if(newPos === LAST){
+      pl.pos = LAST; pl.won = true;
+      return { landed: LAST, bounced:false, won:true };
+    }
+    if(newPos > LAST){
+      const extra = newPos - LAST;
+      newPos = LAST - extra;
+      pl.pos = newPos;
+      return { landed:newPos, bounced:true, won:false };
+    }
+    pl.pos = newPos;
+    return { landed:newPos, bounced:false, won:false };
+  }
+
+  function nextTurn(){
+    turn = (turn + 1) % playerCount;
+    let safety = 0;
+    while(players[turn].won && safety < 12){
+      turn = (turn + 1) % playerCount;
+      safety++;
+    }
+    canRoll = true;
+    rollBtn.disabled = false;
+    updateHeader();
+    paintTokens();
+    highlightActiveCell();
+  }
+
+  function roll(){
+    if(!canRoll) return;
+
+    const p = getActivePlayer();
+    if(p.won){
+      setEvent(`${escapeHtml(p.name)} ya ganó. Turno automático.`);
+      canRoll = false;
+      rollBtn.disabled = true;
+      setTimeout(()=>{ nextTurn(); }, 600);
+      return;
+    }
+
+    const a = rand(1,6), b = rand(1,6);
+    rollBtn.disabled = true;
+    d1El.classList.add("rolling");
+    d2El.classList.add("rolling");
+
+    let ticks = 0;
+    const t = setInterval(()=>{
+      const r1 = rand(1,6);
+      const r2 = rand(1,6);
+      d1El.dataset.face = String(r1);
+      d2El.dataset.face = String(r2);
+      d1v.textContent = String(r1);
+      d2v.textContent = String(r2);
+
+      ticks++;
+      if(ticks >= 10){
+        clearInterval(t);
+        d1El.dataset.face = String(a);
+        d2El.dataset.face = String(b);
+        d1v.textContent = String(a);
+        d2v.textContent = String(b);
+        d1El.classList.remove("rolling");
+        d2El.classList.remove("rolling");
+        afterRoll(a,b);
+      }
+    }, 70);
+
+    function afterRoll(a,b){
+      const steps = a+b;
+      const before = p.pos;
+      const res = movePlayer(p, steps);
+
+      paintTokens();
+      highlightActiveCell();
+      updateHeader();
+
+      let msg = ``;
+      if(res.bounced) msg += `<em>Te pasaste de 69, rebotas.</em><br>`;
+
+      if(res.won){
+        msg += `¡Llegó exacto a <strong>69</strong> y ganó! 🏁`;
+        setEvent(msg, true);
+        canRoll = false;
+        rollBtn.disabled = true;
+        return;
+      }else{
+        msg += (res.landed === 0)
+          ? `<strong>SALIDA (0):</strong> sin castigo.`
+          : `<strong>Casilla ${res.landed} · Castigo:</strong> ${escapeHtml(getPunishment(res.landed))}`;
+        setEvent(msg, false);
+      }
+
+      canRoll = false;
+      rollBtn.disabled = true;
+      setTimeout(()=>{ nextTurn(); }, 900);
+    }
+  }
+
+  function resetGame(){
+    initPlayers();
+    updateHeader();
+    renderBoard();
+    setEvent("Partida reiniciada 🔄");
+  }
+
+  function buildNameInputs(){
+    const wrap = document.getElementById("nameInputs");
+    if(!wrap) return;
+    wrap.innerHTML = "";
+    for(let i=0;i<playerCount;i++){
+      const row = document.createElement("div");
+      row.style.display = "grid";
+      row.style.gridTemplateColumns = "90px 1fr";
+      row.style.gap = "8px";
+      row.style.alignItems = "center";
+
+      const lab = document.createElement("div");
+      lab.className = "small";
+      lab.textContent = `Jugador ${i+1}`;
+      lab.style.fontWeight = "900";
+      lab.style.color = PLAYER_COLORS[i].color;
+
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = `Nombre del jugador ${i+1}`;
+      inp.value = playerNames[i] || PLAYER_COLORS[i].name;
+      inp.style.padding = "10px 12px";
+      inp.style.borderRadius = "12px";
+      inp.style.border = "1px solid rgba(0,0,0,.18)";
+      inp.style.width = "100%";
+      inp.dataset.idx = String(i);
+
+      row.appendChild(lab);
+      row.appendChild(inp);
+      wrap.appendChild(row);
+    }
+  }
+
+  function readNamesFromInputs(){
+    const inputs = [...document.querySelectorAll("#nameInputs input")];
+    inputs.forEach(inp => {
+      const i = Number(inp.dataset.idx);
+      const v = (inp.value || "").trim();
+      playerNames[i] = v ? v : PLAYER_COLORS[i].name;
+    });
+  }
+
+  function openPlayersModal(){
+    playerGrid.innerHTML = "";
+    [2,3,4,5,6,7,8].forEach(n=>{
+      const btn = document.createElement("button");
+      btn.className = "ghost";
+      btn.textContent = n;
+      btn.addEventListener("click", ()=>{
+        playerCount = n;
+        playerNames = PLAYER_COLORS.slice(0, playerCount).map((p, i) => playerNames[i] || p.name);
+        buildNameInputs();
+      });
+      playerGrid.appendChild(btn);
+    });
+
+    const fillDefaults = document.getElementById("fillDefaults");
+    const startGame = document.getElementById("startGame");
+
+    if(fillDefaults){
+      fillDefaults.onclick = () => {
+        [...document.querySelectorAll("#nameInputs input")].forEach((inp, i) => inp.value = PLAYER_COLORS[i].name);
+      };
+    }
+
+    if(startGame){
+      startGame.onclick = () => {
+        readNamesFromInputs();
+        initPlayers();
+        modalBack.style.display = "none";
+        updateHeader();
+        renderBoard();
+        setEvent(`Jugadores: ${playerCount}. Empiezan en <strong>SALIDA (0)</strong>.`, true);
+      };
+    }
+
+    playerCount = Math.max(2, Math.min(8, playerCount||2));
+    playerNames = PLAYER_COLORS.slice(0, playerCount).map((p, i) => playerNames[i] || p.name);
+    buildNameInputs();
+    modalBack.style.display = "grid";
+  }
+
+  // Bindings
+  rollBtn.addEventListener("click", roll);
+  resetBtn.addEventListener("click", resetGame);
+  changePlayersBtn.addEventListener("click", openPlayersModal);
+
+  // Boot
+  try{
+    initPlayers();
+    updateHeader();
+    renderBoard();
+    openPlayersModal();
+  }catch(e){
+    console.error(e);
+    showError(e.message || String(e));
+  }
+})();
+</script>
+</body>
+</html>
