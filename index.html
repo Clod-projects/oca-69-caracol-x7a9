@@ -288,7 +288,19 @@
     input{
       font: 14px system-ui,-apple-system,Segoe UI,Roboto,Arial;
     }
-  </style>
+  
+    /* ===== Opción móvil: Ajustar tablero a pantalla (auto-fit) ===== */
+    .boardScaleWrap{
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
+    }
+    .boardScaled{
+      transform-origin: top left;
+      will-change: transform;
+    }
+
+</style>
 </head>
 <body>
 <div id="errorOverlay" style="display:none;
@@ -345,7 +357,9 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
     </div>
 
     <div class="pageLetter">
-      <div class="board" id="board"></div>
+      <div class="boardScaleWrap" id="boardScaleWrap">
+<div class="board" id="board" class="boardScaled"></div>
+</div>
     </div>
   </section>
 </main>
@@ -498,7 +512,7 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
   // 68:
   "Niño: Dos niñas te harán sexo oral. Niña: Dos te súper cachondearán",
   // 69:
-  "El ganador hará un 69 con escoga",
+  "El ganador hará un 69 con escoja",
 ];
   // ✍️ EJEMPLO:
   // PUNISHMENTS[0] = "Toma agua. Pierdes 1 turno.";
@@ -714,7 +728,9 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
       cell.addEventListener("click", () => {
         if(pos === 0){
           setEvent(`<strong>SALIDA (0)</strong><br>Sin castigo.`);
-        }else{
+        
+    setTimeout(applyBoardFit, 30);
+  }else{
           setEvent(`<strong>Casilla ${pos}</strong><br><strong>Castigo:</strong> ${escapeHtml(getPunishment(pos))}`);
         }
       });
@@ -831,13 +847,14 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
 
       let msg = ``;
       if(res.bounced) msg += `<em>Te pasaste de 69, rebotas.</em><br>`;
+        msg += `<br><strong>Casilla 69 · Castigo:</strong> ${escapeHtml(getPunishment(69))}`;
 
       if(res.won){
-        msg += `¡Llegó exacto a <strong>69</strong> y ganó! 🏁`;
+        // ✅ Ganó este jugador, pero la partida continúa con los demás
+        p.won = true;
+        msg += `¡<strong>${escapeHtml(p.name)}</strong> llegó exacto a <strong>69</strong> y ganó! 🏁<br>`;
+        msg += `<em>La partida continúa con los demás jugadores.</em>`;
         setEvent(msg, true);
-        canRoll = false;
-        rollBtn.disabled = true;
-        return;
       }else{
         msg += (res.landed === 0)
           ? `<strong>SALIDA (0):</strong> sin castigo.`
@@ -855,6 +872,7 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
     initPlayers();
     updateHeader();
     renderBoard();
+    setTimeout(applyBoardFit, 30);
     setEvent("Partida reiniciada 🔄");
   }
 
@@ -939,6 +957,56 @@ font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111;box-shad
     buildNameInputs();
     modalBack.style.display = "grid";
   }
+
+
+  // ===== Auto-fit del tablero para móvil/tablet =====
+  let FIT_BOARD = true;
+  const fitBtn = document.getElementById("fitBtn");
+
+  function applyBoardFit(){
+    const wrap = document.getElementById("boardScaleWrap");
+    const board = document.getElementById("board");
+    if(!wrap || !board) return;
+
+    // reset para medir tamaño real
+    board.style.transform = "none";
+    const naturalW = board.scrollWidth || board.getBoundingClientRect().width;
+    const naturalH = board.scrollHeight || board.getBoundingClientRect().height;
+
+    if(!FIT_BOARD){
+      board.style.transform = "none";
+      wrap.style.height = "auto";
+      return;
+    }
+
+    const top = document.querySelector(".topbar") || document.querySelector(".row.topbar");
+    const topH = top ? top.getBoundingClientRect().height : 0;
+    const availH = Math.max(240, window.innerHeight - topH - 16);
+    const availW = wrap.clientWidth;
+
+    const s = Math.min(1, availW / naturalW, availH / naturalH);
+    board.style.transform = `scale(${s})`;
+    wrap.style.height = Math.ceil(naturalH * s) + "px";
+  }
+
+  function refreshFitButton(){
+    if(!fitBtn) return;
+    fitBtn.textContent = FIT_BOARD ? "Ajuste: ON" : "Ajuste: OFF";
+  }
+
+  if(fitBtn){
+    fitBtn.addEventListener("click", ()=>{
+      FIT_BOARD = !FIT_BOARD;
+      refreshFitButton();
+      applyBoardFit();
+    });
+    refreshFitButton();
+  }
+
+  window.addEventListener("resize", ()=>{
+    applyBoardFit();
+  });
+
 
   // Bindings
   rollBtn.addEventListener("click", roll);
